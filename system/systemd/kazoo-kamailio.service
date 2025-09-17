@@ -3,6 +3,8 @@ Description=Kamailio (OpenSER) - the Open Source SIP Server Configured for Kazoo
 After=syslog.target network-online.target
 
 [Service]
+Environment="PKG_MEMORY=32"
+Environment="SHM_MEMORY=512"
 User=kamailio
 Group=daemon
 PermissionsStartOnly=true
