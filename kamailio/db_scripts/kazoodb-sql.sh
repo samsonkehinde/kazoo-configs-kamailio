@@ -1,7 +1,7 @@
 #!/bin/sh -e
 
 KAMAILIO_SHARE_DIR=${KAMAILIO_SHARE_DIR:-/usr/share/kamailio}
-DB_ENGINE=${DB_ENGINE:-kazoo}
+DB_ENGINE=${DB_ENGINE:-mysql}
 RESULTED_SQL=${RESULTED_SQL:-/tmp/kamailio_initdb.sql}
 
 . $(dirname $0)/$DB_ENGINE-specific --source-only

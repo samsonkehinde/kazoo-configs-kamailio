@@ -12,23 +12,19 @@ if [ -f /etc/kazoo/kamailio/options ]; then
     . /etc/kazoo/kamailio/options
 fi
 
-is_ipaddress ()
-{
-if [ $(echo $1 | grep -o '\.' | wc -l) -ne 3 ]; then
-        return 1
-elif [ $(echo $1 | tr '.' ' ' | wc -w) -ne 4 ]; then
-        return 1
-else
-        for OCTET in $(echo $1 | tr '.' ' '); do
-                if ! [[ $OCTET =~ ^[0-9]+$ ]]; then
-                        return 1
-                elif [[ $OCTET -lt 0 || $OCTET -gt 255 ]]; then
-                        return 1
-                fi
-        done
-fi
-return 0
+is_ipv4() {
+    local ip=$1
+    local IFS=.
+    local -a octets=($ip)
+
+    [[ ${#octets[@]} -eq 4 ]] || return 1
+
+    for o in "${octets[@]}"; do
+        [[ $o =~ ^[0-9]+$ ]] || return 1
+        (( o >= 0 && o <= 255 )) || return 1
+    done
 }
+
 
 RETVAL=1
 USER=${KAMAILIO_USER:-kamailio}
@@ -61,7 +57,7 @@ if [[ "${MY_LOCAL_IP}" != "disable" ]]; then
             MY_LOCAL_IP=$(ip route get 8.8.8.8 2> /dev/null | awk '{print ""$7""; exit}')
         fi
     
-        if is_ipaddress ${MY_LOCAL_IP}; then
+        if is_ipv4 ${MY_LOCAL_IP}; then
            EXTRA_OPTIONS+=" -A MY_LOCAL_IP=${MY_LOCAL_IP} -A LOCAL_IP_AUTO"
         fi
     fi
@@ -73,7 +69,7 @@ if [[ "${MY_PUBLIC_IP}" != "disable" ]]; then
     else
         MY_PUBLIC_IP=$(dig @ns1.google.com TXT o-o.myaddr.l.google.com +short -4 2> /dev/null | sed s/\"//g )
         if [[ ! -z ${MY_PUBLIC_IP} ]]; then
-           if is_ipaddress ${MY_PUBLIC_IP}; then
+           if is_ipv4 ${MY_PUBLIC_IP}; then
               EXTRA_OPTIONS+=" -A MY_PUBLIC_IP=${MY_PUBLIC_IP} -A PUBLIC_IP_AUTO"
            fi
         fi
@@ -81,8 +77,9 @@ if [[ "${MY_PUBLIC_IP}" != "disable" ]]; then
 fi
 
 PKG_MEMORY_MIN=${PKG_MEMORY_MIN:-14}
-SHM_MEMORY=$((`echo $SHM_MEMORY | sed -e 's/[^0-9]//g'`))
-PKG_MEMORY=$((`echo $PKG_MEMORY | sed -e 's/[^0-9]//g'`))
+SHM_MEMORY=${SHM_MEMORY//[^0-9]/}
+PKG_MEMORY=${PKG_MEMORY//[^0-9]/}
+
 [ $SHM_MEMORY -le 0 ] && SHM_MEMORY=64
 [ $PKG_MEMORY -le 0 ] && PKG_MEMORY=${PKG_MEMORY_MIN}
 [ $PKG_MEMORY -lt $PKG_MEMORY_MIN ] && PKG_MEMORY=${PKG_MEMORY_MIN}
@@ -98,7 +95,7 @@ prepare() {
         rm -rf ${PID_FILE}
     fi
     ram_disk
-    ensure_db
+    # ensure_db
     RETVAL=$?
 }
 
@@ -182,15 +179,15 @@ change_owner() {
     fi
 }
 
-ensure_db() {
-    if [ ! -f ${DB_LOCATION}/kazoo.db ]; then
-        init_database
-    else
-        check_database
-    fi
+# ensure_db() {
+#     if [ ! -f ${DB_LOCATION}/kazoo.db ]; then
+#         init_database
+#     else
+#         check_database
+#     fi
 
-    change_owner ${DB_LOCATION}
-}
+#     change_owner ${DB_LOCATION}
+# }
 
 ram_disk_enabled() {
     
@@ -235,14 +232,14 @@ convert_size() {
        /TB$/{    printpower($1, 10, 12)}'
 }
 
-init_database() {
-    ${DB_SCRIPT_DIR}/create-kazoodb-sql.sh
-    check_database
-}
+# init_database() {
+#     ${DB_SCRIPT_DIR}/create-kazoodb-sql.sh
+#     check_database
+# }
 
-check_database() {
-    ${DB_SCRIPT_DIR}/check-kazoodb-sql.sh
-}
+# check_database() {
+#     ${DB_SCRIPT_DIR}/check-kazoodb-sql.sh
+# }
 
 start() {
     cd ${HOME}
